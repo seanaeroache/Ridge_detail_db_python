@@ -1,0 +1,72 @@
+#PYTHON
+
+import cv2
+import numpy as np
+import sqlite3
+import matplotlib.pyplot as plt
+
+## Create Database + Connect to the database
+
+conn = sqlite3.connect(“fingerprints.db”)
+cursor = conn.cursor()
+
+
+## Creates the table if it doesn’t exist
+
+conn.execute(“CREATE TABLE fingerprints (i INTEGER PRIMARY KEY, name TEXT, dob DATE, features BLOB)”)
+
+
+##Input image for query - Capture the fingerprint image
+
+image = cv2.imread(“1_1.tif”, cv2.IMREAD_GRAYSCALE)
+
+
+## Processing of image before query:  Perform preprocessing and feature extraction
+
+image = cv2.GaussianBlur(image, (5,5), 0)
+ret, image = cv2.threshold(image, 127, 255, cv2.THRESH_BINARY_INV)
+corner_map = cv2.cornerHarris(image, 3, 3, 0.04)
+features = corner_map.flatten()
+
+
+## Querying print and display image: Query the database for matching fingerprints
+
+cursor.execute(“SELECT * FROM fingerprints WHERE features=?”,(features.tobytes(),))
+result = cursor.fetchone()
+
+
+## Display the image
+
+cv2.imshow(“fingerprint Image”, image)
+
+
+## Control System using “if” and “else” statements: If a match is found, print the name of the user
+
+
+if result:
+
+print(“fingerprint belongs to:”, result[1])
+
+## Display the result in a separate window using Matplotlib
+
+plt.figure()
+plt.imshow(corner_map)
+plt.title(“Result”)
+plt.show()
+cv2.waitKey(0)
+
+## If no match is found, ask the user if they want to enroll their fingerprint
+
+else:
+
+i = input(“Fingerprint does not match any known fingerprints.Enter your id to enroll:”)
+name = input(“Fingerprint does not match any known fingerprints. Enter your name to enroll: “)
+dob = input(“Fingerprint does not match any known fingerprints. Enter date of birth to enroll: “)
+fprint_data = input(“Fingerprint does not match any known fingerprints. Enter image file to enroll: “)
+cursor.execute(“INSERT INTO fingerprints (name, dob, features)VALUES ( ?, ?, ?)”, (name, dob, features))
+conn.commit()
+print(“Fingerprint enrolled successfully!”)
+
+# Close the connection to the database
+
+conn.close()
